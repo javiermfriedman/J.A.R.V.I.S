@@ -1,0 +1,12 @@
+elevenlabs
+python-dotenv
+langchain_openai
+langchain_core
+pydantic
+langchain_community
+pipecat-ai
+dotenv
+fastapi
+pipecat-ai-cli
+pipecat-ai[cartesia,daily,deepgram,elevenlabs,openai,runner,silero,webrtc]
+torch

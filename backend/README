@@ -1,0 +1,34 @@
+# batch_loop.py
+this will be the primitive version of the conversational AI. It will be much
+slower because we will have to wait for user to finisih speaking, and then
+process the audio, then send it baack to user in one batch_loop
+
+#stream_loop.py
+we will use a more advanced architecrure here. We will use web sockets
+to stream 
+
+User speaks → audio is streamed as small chunks (e.g., 20–100ms frames).
+
+STT streaming: those chunks go to Deepgram over WebSockets.
+
+You receive partial transcripts continuously.
+
+You also receive final transcripts once Deepgram is confident the utterance is complete.
+
+Turn detection (endpointing): you decide when the user is “done” (silence, STT final, confidence rules).
+
+LLM: when an utterance is final, you send it to the LLM with the ongoing state.
+
+Optionally call tools (calendar lookup, FAQs, etc.).
+
+TTS streaming or chunked:
+
+You send the response text to ElevenLabs.
+
+Ideally you request streaming audio output (or fetch audio quickly and start playing as soon as bytes arrive).
+
+Stream back to the user:
+
+Web app: stream to the browser audio element / WebAudio.
+
+Phone cal
