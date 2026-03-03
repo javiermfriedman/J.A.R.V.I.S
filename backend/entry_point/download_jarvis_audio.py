@@ -1,6 +1,6 @@
 from services import generate_audio
 import subprocess
-text_to_download = "Very well, Sir. Initializing server on localhost port seven eight sixty."
+text_to_download = "Test Test"
 audio_file_name = "/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/open_dev.mp3"
 
 def download_audio(audio, filename=audio_file_name):

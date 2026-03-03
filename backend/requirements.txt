@@ -10,3 +10,4 @@ fastapi
 pipecat-ai-cli
 pipecat-ai[cartesia,daily,deepgram,elevenlabs,openai,runner,silero,webrtc]
 torch
+uvicorn

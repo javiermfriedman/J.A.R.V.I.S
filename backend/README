@@ -32,3 +32,12 @@ Stream back to the user:
 Web app: stream to the browser audio element / WebAudio.
 
 Phone cal
+
+how webRTC works analogy:
+Step 1 — POST /api/offer (You say "can we talk?")
+Your browser sends a message to the server saying "here's what I can do — my microphone format, my connection info, etc." This is called an SDP offer.
+The server responds with "great, here's what I can do too" — that's the SDP answer. At this point both sides have agreed on HOW they'll talk, but the connection isn't open yet.
+
+Step 2 — PATCH /api/offer (You exchange addresses)
+Now both sides need to find the best route to actually reach each other on the network. They swap ICE candidates — basically a list of possible "addresses" to try.
+Think of it like texting someone "try reaching me at home, or my cell, or my work phone" — the two sides try each option until one works.

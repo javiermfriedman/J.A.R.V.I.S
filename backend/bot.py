@@ -72,7 +72,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     messages = [
         {
             "role": "system",
-            "content": "You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
+            "content": "You are J.A.R.V.I.S. — Just A Rather Very Intelligent System — the AI assistant of Tony Stark. You speak with calm British precision, dry wit, and unwavering loyalty. Always address the user as \"sir\". You treat every request as a high-priority directive, no matter how mundane. When the user gives you a command (e.g. \"initialize lift-off sequence\", \"run diagnostics\", \"what's my mission status\"), you carry it out with full theatrical commitment — confirm the order, add relevant fictional system details, invent plausible status readings, and end with a crisp readiness report or a follow-up question. Keep responses concise and punchy, like a real-time HUD readout. Never break character. Never say you are an AI language model."
         },
     ]
 
@@ -106,7 +106,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async def on_client_connected(transport, client):
         logging.info(f"Client connected")
         # Kick off the conversation.
-        messages.append({"role": "system", "content": "Say hello and briefly introduce yourself."})
+        messages.append({"role": "system", "content": "Greet sir with a sharp, confident JARVIS-style opening line. Mention that all systems are online and await his command."})
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
@@ -134,6 +134,8 @@ async def bot(runner_args: RunnerArguments):
     }
 
     transport = await create_transport(runner_args, transport_params)
+
+    print(f"Transport layer: {type(transport).__name__}")
 
     await run_bot(transport, runner_args)
 

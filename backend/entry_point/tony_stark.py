@@ -18,26 +18,36 @@ def play_saved_audio(filepath):
     subprocess.run(["afplay", filepath])
 
 def start_dev_server():
+    print("Starting J.A.R.V.I.S frontend server in new terminal...")
     subprocess.Popen([
         "osascript", "-e",
         '''tell app "Terminal"
             activate
-            do script "/Users/javierfriedman/Code/J.A.R.V.I.S/backend/venv/bin/python /Users/javierfriedman/Code/J.A.R.V.I.S/backend/bot.py"
+            do script "cd /Users/javierfriedman/Code/J.A.R.V.I.S/frontend && npm run dev"
         end tell'''
     ])
-    print("Starting J.A.R.V.I.S server in new terminal...")
+    print("Starting J.A.R.V.I.S backend server in new terminal...")
+    subprocess.Popen([
+        "osascript", "-e",
+        '''tell app "Terminal"
+            activate
+            do script "/Users/javierfriedman/Code/J.A.R.V.I.S/backend/venv/bin/python /Users/javierfriedman/Code/J.A.R.V.I.S/backend/main.py"
+        end tell'''
+    ])
 
     # Poll until server is ready
     import urllib.request
-    for _ in range(10):  # try for up to 60 seconds
+    for _ in range(30):
         time.sleep(1)
         try:
-            urllib.request.urlopen("http://localhost:7860/client")
-            subprocess.Popen(["open", "-a", "Safari", "http://localhost:7860/client"])
-            print("✅ Server ready! Opening browser...")
+            urllib.request.urlopen("http://localhost:5173/")
+            subprocess.Popen(["open", "-a", "Arc", "http://localhost:5173/"])
+            print("✅ Frontend ready! Opening Arc...")
             break
         except:
             pass
+    else:
+        print("❌ Frontend never became ready — check the Terminal window for errors.")
     
 if __name__ == "__main__":
     open_spotify()
