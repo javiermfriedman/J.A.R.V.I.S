@@ -35,10 +35,14 @@ export default function useAudioAnalyser(mediaStream) {
       return;
     }
 
-    // Reuse the context that was unlocked by the click, or create one
-    const ctx = ctxRef.current ?? new AudioContext();
-    ctxRef.current = ctx;
-    ctx.resume();
+    // Reuse a context unlocked by a click, or create one quietly
+    if (!ctxRef.current) {
+      ctxRef.current = new AudioContext();
+    }
+    const ctx = ctxRef.current;
+    // resume() will succeed once the user has interacted with the page;
+    // until then the analyser just reads silence — no crash, no noise.
+    ctx.resume().catch(() => {});
 
     const source = ctx.createMediaStreamSource(mediaStream);
     const analyser = ctx.createAnalyser();

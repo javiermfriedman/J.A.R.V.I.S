@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const SERVER = 'http://localhost:8000';
 
@@ -103,6 +103,11 @@ export default function useWebRTC() {
       disconnect();
     }
   }, [disconnect]);
+
+  /* ── Auto-connect on mount ────────────────────────────────────── */
+  useEffect(() => {
+    connect();
+  }, [connect]);
 
   /* ── Single tap toggles connection ─────────────────────────────── */
   const toggle = useCallback(() => {

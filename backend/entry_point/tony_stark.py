@@ -144,8 +144,8 @@ def start_dev_server():
 
         if backend_up and frontend_up:
             print("🚀 Opening Arc...")
-            play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/hud_activate.mp3", background=True)
             fade_spotify_volume(30, duration=3.0)
+            time.sleep(1.5)
             subprocess.Popen(["open", "-a", "Arc", "http://127.0.0.1:5741"])
             break
     else:

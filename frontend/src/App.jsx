@@ -8,7 +8,7 @@ export default function App() {
   const { audioLevel, isSpeaking, resumeAudio } = useAudioAnalyser(remoteStream);
 
   const handleTap = () => {
-    resumeAudio();   // unlock AudioContext on user gesture (needed for Arc/Chromium)
+    resumeAudio();   // unlock AudioContext on first tap (enables orb animation)
     toggle();
   };
 
