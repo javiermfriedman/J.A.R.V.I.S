@@ -5,14 +5,13 @@ import './App.css';
 
 export default function App() {
   const { status, remoteStream, botAudioRef, toggle } = useWebRTC();
-  const { audioLevel, isSpeaking } = useAudioAnalyser(remoteStream);
+  const { bubbleState, audioLevel } = useAudioAnalyser(remoteStream, status);
 
   return (
     <div className="app">
       <SpeechBubble
-        status={status}
+        bubbleState={bubbleState}
         audioLevel={audioLevel}
-        isSpeaking={isSpeaking}
         onTap={toggle}
       />
 
