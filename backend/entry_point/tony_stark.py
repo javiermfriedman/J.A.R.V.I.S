@@ -11,22 +11,86 @@ def set_spotify_volume(volume: int):
         f'tell application "Spotify" to set sound volume to {volume}'
     ])
 
+def fade_spotify_volume(target: int, duration: float = 2.0, steps: int = 20):
+    """Smoothly fade Spotify's volume to `target` — runs as a background process."""
+    step_delay = round(duration / steps, 3)
+    # Single AppleScript handles the entire fade; Popen so it doesn't block Python
+    subprocess.Popen(["osascript", "-e", f'''
+        tell application "Spotify"
+            set startVol to sound volume
+            set stepCount to {steps}
+            repeat with i from 1 to stepCount
+                set newVol to startVol + ({target} - startVol) * i / stepCount
+                set newVol to round newVol
+                set sound volume to newVol
+                delay {step_delay}
+            end repeat
+            set sound volume to {target}
+        end tell
+    '''])
+
 def open_spotify():
     if sys.platform == "darwin":  # macOS
         # Open Spotify with the track URI
         subprocess.Popen(["open", TRACK_URI])
-        set_spotify_volume(100)
+        set_spotify_volume(90)
 
     print("Opening Spotify and playing 'Should I Stay or Should I Go' by The Clash...")
 
 
-def play_saved_audio(filepath):
+def play_saved_audio(filepath, background=False):
     """Play an MP3 file using macOS's built-in afplay command. Skips empty/missing files."""
     import os
     if not os.path.isfile(filepath) or os.path.getsize(filepath) == 0:
         print(f"⚠️  Skipping {os.path.basename(filepath)} (missing or empty)")
         return
-    subprocess.run(["afplay", filepath])
+    if background:
+        subprocess.Popen(["afplay", filepath])
+    else:
+        subprocess.run(["afplay", filepath])
+
+def fake_terminal_output():
+    """Open a new Terminal window and print cinematic boot sequence diagnostics."""
+    import tempfile, os
+    lines = [
+        "[BOOT]    J.A.R.V.I.S. kernel v4.7.12-arc .................. LOADED",
+        "[SYS]     Allocating neural-net co-processors ............... OK",
+        "[SYS]     Mounting /stark/home/lab .......................... OK",
+        "[NET]     Secure uplink to Stark Industries ................. ESTABLISHED",
+        "[CRYPTO]  AES-512 handshake ................................. VERIFIED",
+        "[HW]      Arc reactor interface ............................. STABLE  (3.2 GW)",
+        "[DIAG]    Running self-diagnostics .......................... PASS  (137 modules)",
+        "[AI]      Loading language model weights .................... OK  (8.4 GB)",
+        "[AI]      Initialising Silero VAD analyser .................. OK",
+        "[AUDIO]   Deepgram STT pipeline ............................. ONLINE",
+        "[AUDIO]   ElevenLabs TTS voice (George) ..................... ONLINE",
+        "[AUDIO]   Echo cancellation ................................. ACTIVE",
+        "[WEBRTC]  STUN/TURN negotiation ............................. READY",
+        "[WEBRTC]  Signalling server on :8000 ....................... LISTENING",
+        "[VITE]    Frontend dev server on :5741 ..................... COMPILED",
+        "[SEC]     Perimeter scan .................................... CLEAR",
+        "[SYS]     All subsystems nominal. Awaiting command, sir.",
+    ]
+
+    # Write a temp shell script so we avoid AppleScript quoting issues
+    script = "#!/bin/bash\nclear\n"
+    for line in lines:
+        script += f'sleep 0.$(( RANDOM % 14 + 5 ))\n'
+        script += f"echo '{line}'\n"
+    script += "# self-cleanup\nrm -- \"$0\"\n"
+
+    fd, path = tempfile.mkstemp(suffix=".sh")
+    with os.fdopen(fd, "w") as f:
+        f.write(script)
+    os.chmod(path, 0o755)
+
+    subprocess.Popen([
+        "osascript", "-e",
+        f'''tell app "Terminal"
+            activate
+            do script "{path}"
+        end tell'''
+    ])
 
 def start_dev_server():
     print("Starting J.A.R.V.I.S backend server in new terminal...")
@@ -51,7 +115,7 @@ def start_dev_server():
     backend_up = False
     frontend_up = False
 
-    for attempt in range(30):
+    for attempt in range(35):
         time.sleep(1)
 
         if not backend_up:
@@ -66,12 +130,12 @@ def start_dev_server():
 
         if backend_up and not frontend_up:
             try:
-                urllib.request.urlopen("http://127.0.0.1:5173")
+                urllib.request.urlopen("http://127.0.0.1:5741")
                 frontend_up = True
             except urllib.error.HTTPError:
                 frontend_up = True
             except Exception as e:
-                print(f"  ⏳ Waiting for frontend... (attempt {attempt+1}, {e.__class__.__name__})")
+                print(f"  ⏳ Waiting for frontend on :5741... (attempt {attempt+1}, {e.__class__.__name__})")
 
         if backend_up:
             print("✅ Backend ready!")
@@ -80,16 +144,20 @@ def start_dev_server():
 
         if backend_up and frontend_up:
             print("🚀 Opening Arc...")
-            subprocess.Popen(["open", "-a", "Arc", "http://127.0.0.1:5173"])
-            set_spotify_volume(30)
+            play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/hud_activate.mp3", background=True)
+            fade_spotify_volume(30, duration=3.0)
+            subprocess.Popen(["open", "-a", "Arc", "http://127.0.0.1:5741"])
             break
     else:
         print("❌ Servers never became ready — check the Terminal windows for errors.")
     
 if __name__ == "__main__":
     open_spotify()
-    time.sleep(3)
+    time.sleep(4)
+    fake_terminal_output()
     play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/welcome_home.mp3")
     time.sleep(1)
-    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/open_dev.mp3")
+    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/sfx_ai.mp3", background=True)
+    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/backend/entry_point/open_dev.mp3", background=True)
+    time.sleep(2)
     start_dev_server()  
