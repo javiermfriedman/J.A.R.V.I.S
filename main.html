@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pipecat WebRTC Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+    }
+    h2 { color: #7ee787; }
+    button {
+      padding: 10px 24px;
+      margin: 6px 4px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    #connectBtn  { background: #238636; color: white; }
+    #disconnectBtn { background: #b62324; color: white; display: none; }
+    #log {
+      margin-top: 24px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+      height: 300px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .step  { color: #79c0ff; }
+    .ok    { color: #7ee787; }
+    .err   { color: #f85149; }
+    .info  { color: #e3b341; }
+  </style>
+</head>
+<body>
+
+  <h2>🎙 Pipecat WebRTC Test Client</h2>
+  <p style="color:#8b949e">Opens your mic, negotiates WebRTC with the bot, and streams audio.</p>
+
+  <button id="connectBtn">Connect</button>
+  <button id="disconnectBtn">Disconnect</button>
+
+  <!-- This hidden <audio> element plays the bot's voice back to you -->
+  <audio id="botAudio" autoplay playsinline></audio>
+
+  <div id="log"></div>
+
+<script>
+  const SERVER = "http://localhost:8000"; // ← change port if needed
+
+  let pc = null;       // RTCPeerConnection - the WebRTC session object
+  let stream = null;   // your microphone audio stream
+
+  const log = (msg, type = "info") =>  {
+    const div = document.getElementById("log");
+    div.innerHTML += `<div class="${type}">${msg}</div>`;
+    div.scrollTop = div.scrollHeight;
+  };
+
+  document.getElementById("connectBtn").onclick = connect;
+  document.getElementById("disconnectBtn").onclick = disconnect;
+
+  async function connect() {
+    document.getElementById("connectBtn").style.display = "none";
+    document.getElementById("disconnectBtn").style.display = "inline-block";
+
+    try {
+
+      // ── STEP 1: Get microphone access ─────────────────────────────────
+      log("① Requesting microphone access...", "step");
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      log("  ✔ Microphone granted", "ok");
+
+
+      // ── STEP 2: Create a WebRTC peer connection ───────────────────────
+      // RTCPeerConnection is the browser's built-in WebRTC object.
+      // STUN server helps discover your public IP for ICE candidates.
+      log("② Creating WebRTC peer connection...", "step");
+      pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      });
+
+      // Add your mic audio to the connection (so the bot hears you)
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      // When the bot sends audio back, play it through the hidden <audio> element
+      pc.ontrack = (event) => {
+        log("  ✔ Receiving bot audio!", "ok");
+        document.getElementById("botAudio").srcObject = event.streams[0];
+      };
+
+      // Collect ICE candidates as they are discovered (we'll send them in step 4)
+      const iceCandidates = [];
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          iceCandidates.push(event.candidate);
+          log(`  ICE candidate found: ${event.candidate.type}`, "info");
+        }
+      };
+      log("  ✔ Peer connection created", "ok");
+
+
+      // ── STEP 3: POST /api/offer ───────────────────────────────────────
+      // Create an SDP offer (describes our audio capabilities + connection info)
+      // and send it to the server. The server responds with its own SDP answer.
+      log("③ Creating SDP offer and sending to POST /api/offer...", "step");
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer); // tell our side "this is what we offer"
+
+      const response = await fetch(`${SERVER}/api/offer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sdp: offer.sdp,
+          type: offer.type,
+        })
+      });
+
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      const answer = await response.json();
+      log(`  ✔ Got SDP answer from server (pc_id: ${answer.pc_id})`, "ok");
+
+      // Tell our side "this is what the server answered with"
+      await pc.setRemoteDescription({ type: answer.type, sdp: answer.sdp });
+
+
+      // ── STEP 4: PATCH /api/offer (ICE candidates) ────────────────────
+      // Wait a moment for ICE gathering to settle, then send our candidates
+      // to the server so it knows how to reach us on the network.
+      log("④ Sending ICE candidates to PATCH /api/offer...", "step");
+
+      await new Promise(r => setTimeout(r, 1000)); // wait for ICE gathering
+
+      if (iceCandidates.length > 0) {
+        await fetch(`${SERVER}/api/offer`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pc_id: answer.pc_id,
+            candidates: iceCandidates.map(c => c.toJSON())
+          })
+        });
+        log(`  ✔ Sent ${iceCandidates.length} ICE candidate(s)`, "ok");
+      } else {
+        log("  ℹ No ICE candidates to send (may still work)", "info");
+      }
+
+
+      // ── STEP 5: Done! ─────────────────────────────────────────────────
+      // From here WebRTC takes over. No more API calls.
+      // Audio flows directly browser ↔ bot.
+      log("⑤ WebRTC handshake complete! Speak into your mic 🎙", "ok");
+
+    } catch (err) {
+      log(`✖ Error: ${err.message}`, "err");
+      disconnect();
+    }
+  }
+
+  async function disconnect() {
+    if (pc) { pc.close(); pc = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    document.getElementById("botAudio").srcObject = null;
+    document.getElementById("connectBtn").style.display = "inline-block";
+    document.getElementById("disconnectBtn").style.display = "none";
+    log("── Disconnected ──", "info");
+  }
+</script>
+</body>
+</html>
