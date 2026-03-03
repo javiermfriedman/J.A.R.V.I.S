@@ -5,14 +5,20 @@ import './App.css';
 
 export default function App() {
   const { status, remoteStream, botAudioRef, toggle } = useWebRTC();
-  const { bubbleState, audioLevel } = useAudioAnalyser(remoteStream, status);
+  const { audioLevel, isSpeaking, resumeAudio } = useAudioAnalyser(remoteStream);
+
+  const handleTap = () => {
+    resumeAudio();   // unlock AudioContext on user gesture (needed for Arc/Chromium)
+    toggle();
+  };
 
   return (
     <div className="app">
       <SpeechBubble
-        bubbleState={bubbleState}
+        status={status}
         audioLevel={audioLevel}
-        onTap={toggle}
+        isSpeaking={isSpeaking}
+        onTap={handleTap}
       />
 
       {/* hidden element — plays the bot's voice */}

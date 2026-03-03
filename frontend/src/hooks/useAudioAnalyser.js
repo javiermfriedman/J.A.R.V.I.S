@@ -1,95 +1,77 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
-const SPEAKING_THRESHOLD = 8;   // old model: low threshold, relies on default smoothing
-const SILENCE_TIMEOUT_MS = 800; // hold "speaking" for 800 ms after last loud frame
-const FFT_SIZE = 64;
+const SPEAK_ON = 0.08;  // level must exceed this to enter "speaking"
+const SPEAK_OFF = 0.03; // level must drop below this to leave "speaking"
+const SMOOTH = 0.25;    // exponential-smoothing factor (0 = sluggish, 1 = raw)
 
 /**
- * Analyses the bot's audio stream and manages the orb state machine.
+ * Analyses a remote MediaStream and returns a smoothed audio level (0–1)
+ * plus a debounced boolean indicating whether the far end is speaking.
  *
- * Uses the original detection model:
- *   – default smoothingTimeConstant (0.8) for stable readings
- *   – SPEAKING_THRESHOLD = 8  (lower, but smoothing prevents noise triggers)
- *   – silence timer resets on every quiet frame (800 ms after LAST loud frame)
- *
- * States: idle → connecting → listening ↔ speaking
- *
- * @param {MediaStream|null} botStream  – remote stream from useWebRTC
- * @param {string}           status     – 'idle' | 'connecting' | 'connected'
- * @returns {{ bubbleState: string, audioLevel: number }}
+ * Call `resumeAudio()` inside a click handler so Chromium unlocks the
+ * AudioContext (Safari does this automatically).
  */
-export default function useAudioAnalyser(botStream, status) {
-  const [bubbleState, setBubbleState] = useState('idle');
+export default function useAudioAnalyser(mediaStream) {
   const [audioLevel, setAudioLevel] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
+  const ctxRef = useRef(null);
   const rafRef = useRef(null);
-  const silenceTimerRef = useRef(null);
+  const smoothedRef = useRef(0);
   const speakingRef = useRef(false);
 
-  /* ── Sync non-connected states directly from status ──────────── */
+  /* ── Call this from a click handler to unlock the AudioContext ── */
+  const resumeAudio = useCallback(() => {
+    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    ctxRef.current.resume();
+  }, []);
+
   useEffect(() => {
-    if (status === 'idle') {
-      setBubbleState('idle');
-      setAudioLevel(0);
+    if (!mediaStream) {
+      smoothedRef.current = 0;
       speakingRef.current = false;
-      clearTimeout(silenceTimerRef.current);
-    } else if (status === 'connecting') {
-      setBubbleState('connecting');
       setAudioLevel(0);
-      speakingRef.current = false;
-      clearTimeout(silenceTimerRef.current);
+      setIsSpeaking(false);
+      return;
     }
-  }, [status]);
 
-  /* ── Frequency-domain analysis on a cloned stream ────────────── */
-  useEffect(() => {
-    if (!botStream || status !== 'connected') return;
-
-    const clonedStream = botStream.clone();
-
-    const ctx = new AudioContext();
+    // Reuse the context that was unlocked by the click, or create one
+    const ctx = ctxRef.current ?? new AudioContext();
+    ctxRef.current = ctx;
     ctx.resume();
-    const source = ctx.createMediaStreamSource(clonedStream);
+
+    const source = ctx.createMediaStreamSource(mediaStream);
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = FFT_SIZE;
-    // No explicit smoothingTimeConstant — default 0.8 smooths out noise spikes
+    analyser.fftSize = 256;
     source.connect(analyser);
 
-    const bins = analyser.frequencyBinCount;
-    const freqData = new Uint8Array(bins);
-
-    setBubbleState('listening');
+    const buf = new Uint8Array(analyser.fftSize);
 
     const tick = () => {
-      analyser.getByteFrequencyData(freqData);
+      analyser.getByteTimeDomainData(buf);
 
-      // RMS across all frequency bins
+      // RMS volume
       let sum = 0;
-      for (let i = 0; i < bins; i++) {
-        sum += freqData[i] * freqData[i];
+      for (let i = 0; i < buf.length; i++) {
+        const s = (buf[i] - 128) / 128;
+        sum += s * s;
       }
-      const rms = Math.sqrt(sum / bins);
+      const rms = Math.sqrt(sum / buf.length);
+      const raw = Math.min(rms / 0.2, 1);
 
-      // Normalise to 0–1 for the orb glow / scale
-      const level = Math.min(rms / 80, 1);
+      // exponential smoothing
+      smoothedRef.current += (raw - smoothedRef.current) * SMOOTH;
+      const level = smoothedRef.current;
+
       setAudioLevel(level);
 
-      if (rms > SPEAKING_THRESHOLD) {
-        /* ── audio detected ─────────────────────────────────────── */
+      // hysteresis so the orb doesn't flicker
+      if (level > SPEAK_ON && !speakingRef.current) {
         speakingRef.current = true;
-        clearTimeout(silenceTimerRef.current);
-        setBubbleState('speaking');
-      } else if (speakingRef.current) {
-        /* ── silence frame while still in "speaking" ────────────── */
-        // Reset timer on every silent frame so the 800 ms countdown
-        // always starts from the LAST loud frame (more forgiving for
-        // natural speech gaps)
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = setTimeout(() => {
-          speakingRef.current = false;
-          setBubbleState('listening');
-          setAudioLevel(0);
-        }, SILENCE_TIMEOUT_MS);
+        setIsSpeaking(true);
+      } else if (level < SPEAK_OFF && speakingRef.current) {
+        speakingRef.current = false;
+        setIsSpeaking(false);
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -99,12 +81,11 @@ export default function useAudioAnalyser(botStream, status) {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-      clonedStream.getTracks().forEach((t) => t.stop());
-      ctx.close();
+      source.disconnect();
+      analyser.disconnect();
+      // Don't close ctx — it's reused across reconnects
     };
-  }, [botStream, status]);
+  }, [mediaStream]);
 
-  return { bubbleState, audioLevel };
+  return { audioLevel, isSpeaking, resumeAudio };
 }

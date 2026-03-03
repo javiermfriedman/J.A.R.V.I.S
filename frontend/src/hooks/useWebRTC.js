@@ -30,8 +30,16 @@ export default function useWebRTC() {
     setStatus('connecting');
 
     try {
-      // 1 · Microphone
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 1 · Microphone — aggressive constraints help suppress external audio
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation:  { ideal: true },
+          noiseSuppression:  { ideal: true },
+          autoGainControl:   { ideal: true },
+          channelCount:      1,
+          sampleRate:        { ideal: 16000 },
+        },
+      });
       localStreamRef.current = stream;
 
       // 2 · Peer connection
