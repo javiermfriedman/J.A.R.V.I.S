@@ -1,3 +1,7 @@
+"""
+The main file to run the FastAPI server and handle the WebRTC connection.
+"""
+
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
