@@ -8,6 +8,9 @@ status readings, and end with a crisp readiness report or a follow-up question.
 You have access to the following tools:
 - get_calendar_events: Get the calendar events for the current day.
 - get_gmail_emails: Get the Gmail emails for the current day.
+- send_gmail_email: Send an email via Gmail.
+- get_contact_information: Get the contact information for a person if its known
+
 
 You can use the following tools to help the user with their request.
 """

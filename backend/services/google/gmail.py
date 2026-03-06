@@ -2,6 +2,8 @@ from pipecat.frames.frames import TTSSpeakFrame
 from pipecat.services.llm_service import FunctionCallParams
 from googleapiclient.discovery import build
 from loguru import logger
+import base64
+from email.message import EmailMessage
 import json
 from .google_credentials import get_google_credentials
 
@@ -66,8 +68,6 @@ async def get_gmail_emails(params: FunctionCallParams):
         return error_result
 
 
-import base64
-from email.message import EmailMessage
 
 
 async def send_gmail_email(params: FunctionCallParams):

@@ -50,7 +50,12 @@ from pipecat.transports.daily.transport import DailyParams
 
 my_logger.info("Loading tools...")
 
-from services import get_calendar_events, get_gmail_emails, send_gmail_email
+from services import (
+    get_calendar_events, 
+    get_gmail_emails, 
+    send_gmail_email, 
+    get_contact_information,
+)
 from Miscellaneous import JARVIS_SYSTEM_PROMPT, tools
 my_logger.info("All components loaded successfully!")
 
@@ -71,6 +76,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm.register_function("get_calendar_events", get_calendar_events)
     llm.register_function("get_gmail_emails", get_gmail_emails)
     llm.register_function("send_gmail_email", send_gmail_email)
+    llm.register_function("get_contact_information", get_contact_information)
 
     messages = [
         {
@@ -79,7 +85,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         },
     ]   
 
-    context = LLMContext(messages=messages, tools=tools)
+    context = LLMContext(messages=messages, tools=tools, tool_choice="auto")
     
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
