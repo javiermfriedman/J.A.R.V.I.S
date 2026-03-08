@@ -1,36 +1,39 @@
 from pipecat.frames.frames import TTSSpeakFrame
 from pipecat.services.llm_service import FunctionCallParams
 from googleapiclient.discovery import build
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import json
 from loguru import logger
-from .google_credentials import get_google_credentials
+from .auth import get_google_credentials
 
-async def get_calendar_events(params: FunctionCallParams):
-    """Get calendar events for today.
+async def get_calender_events(params: FunctionCallParams):
+    """get an array of calendar events for a given time range
     
     Args:
-        params: FunctionCallParams (no arguments needed)
-        
-    Returns:
-        str: JSON string of events for today
+        params: start_date: The start date and time of the event (datetime object).
+        end_date: The end date and time of the event (datetime object).
+        Returns:
+        str: JSON string of events for the given time range
     """
     try:
-        logger.info("🛠 TOOL CALL: get_calendar_events() invoked")
+        logger.info("🛠 TOOL CALL: get_calender_events() invoked")
 
         # Bot speaks immediately before checking schedule
         await params.llm.push_frame(TTSSpeakFrame("Let me check your schedule diddy"))
         
-        # Get the start and end of TODAY in the current local timezone (required for the search filter)
-        now = datetime.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start + timedelta(days=1)
+        tz = ZoneInfo("America/New_York")
+        start_date = datetime.fromisoformat(params.arguments.get("start_date", datetime.now().strftime("%Y-%m-%d-T%H:%M:%S")))
+        end_date = datetime.fromisoformat(params.arguments.get("end_date", datetime.now().strftime("%Y-%m-%d-T%H:%M:%S")))
+
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=tz)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=tz)
+        time_min = start_date.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        time_max = end_date.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
         
-        # Convert to UTC ISO format for Google Calendar API (required format)
-        time_min = today_start.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
-        time_max = today_end.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
-        
-        logger.info(f"📅 Fetching calendar events for today ({now.strftime('%Y-%m-%d')})")
+        logger.info(f"📅 Fetching calendar events for ({start_date.strftime('%Y-%m-%d-T%H:%M:%S')} to {end_date.strftime('%Y-%m-%d-T%H:%M:%S')})")
         
         # Get authenticated calendar service
         creds = get_google_credentials()
@@ -74,7 +77,7 @@ async def get_calendar_events(params: FunctionCallParams):
         result = json.dumps(filtered_events, indent=2)
         
         # NOTE: events variable in logger will still show max 50 events, but filtered_events is the concise list.
-        logger.info(f"✅ Calendar events retrieved: {len(events)} events (Filtered to {len(filtered_events)} timed events)")
+        logger.info(f"✅ Calendar events retrieved: {result}")
         await params.result_callback(result)
         return result
         
@@ -84,7 +87,8 @@ async def get_calendar_events(params: FunctionCallParams):
         await params.result_callback(error_result)
         return error_result
 
-async def google_calendar_book(params: FunctionCallParams):
+
+async def schedule_event(params: FunctionCallParams):
     """
     Book a Google Calendar event on the specified calendar.
 
@@ -104,16 +108,16 @@ async def google_calendar_book(params: FunctionCallParams):
 
     try:
 
-        logger.info("🛠 TOOL CALL: google_calendar_book() invoked")
+        logger.info("🛠 TOOL CALL: schedule_event() invoked")
 
         # Bot speaks immediately before checking schedule
         await params.llm.push_frame(TTSSpeakFrame("Let me book the event diddy"))
         
         summary = params.arguments.get("summary", "")
-        start_date = params.arguments.get("start_date", "")
-        end_date = params.arguments.get("end_date", "")
+        start_date = datetime.fromisoformat(params.arguments.get("start_date", ""))
+        end_date = datetime.fromisoformat(params.arguments.get("end_date", ""))
         description = params.arguments.get("description", "")
-        patient_email = params.arguments.get("patient_email", "")
+        email = params.arguments.get("email", "")
         location = params.arguments.get("location", "")
 
 
@@ -121,6 +125,7 @@ async def google_calendar_book(params: FunctionCallParams):
 
         creds = get_google_credentials()
         service = build('calendar', 'v3', credentials=creds)
+
         
         event = {
             'summary': summary,
@@ -133,10 +138,13 @@ async def google_calendar_book(params: FunctionCallParams):
                 'dateTime': end_date.isoformat(),
                 'timeZone': timezone,
             },
-            'attendees': [{'email': patient_email}],
-            'location': location,
             'sendNotifications': True,
         }
+
+        if email:
+            event['attendees'] = [{'email': email}]
+        if location:
+            event['location'] = location
 
         service.events().insert(calendarId='primary', body=event).execute()
 

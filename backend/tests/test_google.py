@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from services.google_calender import get_google_credentials, SCOPES
+from services.google.auth import get_google_credentials, SCOPES
 from googleapiclient.discovery import build
 
 

@@ -5,7 +5,7 @@ from loguru import logger
 import base64
 from email.message import EmailMessage
 import json
-from .google_credentials import get_google_credentials
+from .auth import get_google_credentials
 
 async def get_gmail_emails(params: FunctionCallParams):
     """Get the 2 most recent Gmail emails.

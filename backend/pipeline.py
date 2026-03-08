@@ -1,6 +1,6 @@
-"""Pipecat Quickstart Example.
+"""J.A.R.V.I.S. AI Bot Pipeline.
 
-The cor logic to run JARVIS AI bot, uses Pipecat framework. 
+The core logic to run the JARVIS AI bot, using the Pipecat framework.
 """
 
 import os
@@ -8,10 +8,9 @@ import os
 from dotenv import load_dotenv
 import sys
 from loguru import logger
-# Remove default handler
-logger.remove()  # maybe remove this
 
-# Only allow logs from your own application, block ALL pipecat
+# THIS removes pipecat logging from terminal
+logger.remove()  
 logger.add(
     sys.stderr,
     level="DEBUG",
@@ -51,12 +50,14 @@ from pipecat.transports.daily.transport import DailyParams
 my_logger.info("Loading tools...")
 
 from services import (
-    get_calendar_events, 
     get_gmail_emails, 
     send_gmail_email, 
+    get_calender_events,
+    schedule_event, 
+    fetch_all_known_contacts,
     get_contact_information,
 )
-from Miscellaneous import JARVIS_SYSTEM_PROMPT, tools
+from core import JARVIS_SYSTEM_PROMPT, tools
 my_logger.info("All components loaded successfully!")
 
 load_dotenv(override=True)
@@ -71,13 +72,19 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         voice_id="JBFqnCBsd6RMkjVDRZzb"
     )
 
-    llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"))
+    # run_in_parallel=False avoids race conditions and duplicate tool execution
+    # (see Pipecat issue #3273 and similar)
+    llm = OpenAILLMService(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        run_in_parallel=False,
+    )
 
-    llm.register_function("get_calendar_events", get_calendar_events)
+    llm.register_function("get_calender_events", get_calender_events)
+    llm.register_function("schedule_event", schedule_event)
     llm.register_function("get_gmail_emails", get_gmail_emails)
     llm.register_function("send_gmail_email", send_gmail_email)
     llm.register_function("get_contact_information", get_contact_information)
-
+    llm.register_function("fetch_all_known_contacts", fetch_all_known_contacts)
     messages = [
         {
             "role": "system",
@@ -132,7 +139,23 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
 
-    await runner.run(task)
+    try:
+        await runner.run(task)
+    except Exception as e:
+        my_logger.error(f"Pipeline error: {e}")
+        # Categorize the error
+        error_str = str(e).lower()
+        if "credit" in error_str or "quota" in error_str or "billing" in error_str:
+            my_logger.error("💳 Out of credits on one of the API services")
+        elif "401" in error_str or "unauthorized" in error_str or "api key" in error_str:
+            my_logger.error("🔑 Invalid API key — check OPENAI / DEEPGRAM / ELEVENLABS keys")
+        elif "429" in error_str or "rate limit" in error_str:
+            my_logger.error("⏱️ Rate limited by an API service")
+        elif "timeout" in error_str:
+            my_logger.error("⏰ Service timed out")
+        else:
+            my_logger.error(f"❓ Unknown error: {e}")
+        raise
 
 
 async def bot(runner_args: RunnerArguments):
