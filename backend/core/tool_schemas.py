@@ -101,10 +101,18 @@ get_contact_information_tool = FunctionSchema(
     required=["name"],
 )
 
+shutdown_system_tool = FunctionSchema(
+    name="shutdown_system",
+    description="Shutdown the system. Use this when the user asks you to shutdown the system.",
+    properties={},
+    required=[],
+)
+
 tools = ToolsSchema(standard_tools=[
     get_calender_events_tool,
     schedule_event_tool,
     get_gmail_emails_tool,
     send_gmail_email_tool,
     get_contact_information_tool,
+    shutdown_system_tool,
 ])

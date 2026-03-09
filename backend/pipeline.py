@@ -10,12 +10,12 @@ import sys
 from loguru import logger
 
 # THIS removes pipecat logging from terminal
-logger.remove()  
-logger.add(
-    sys.stderr,
-    level="DEBUG",
-    filter=lambda record: not record["name"].startswith("pipecat")
-)
+# logger.remove()  
+# logger.add(
+#     sys.stderr,
+#     level="DEBUG",
+#     filter=lambda record: not record["name"].startswith("pipecat")
+# )
 
 # Your own logging
 my_logger = logger.bind(name="jarvis")
@@ -56,6 +56,7 @@ from services import (
     schedule_event, 
     fetch_all_known_contacts,
     get_contact_information,
+    shutdown_system,
 )
 from core import JARVIS_SYSTEM_PROMPT, tools
 my_logger.info("All components loaded successfully!")
@@ -85,6 +86,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm.register_function("send_gmail_email", send_gmail_email)
     llm.register_function("get_contact_information", get_contact_information)
     llm.register_function("fetch_all_known_contacts", fetch_all_known_contacts)
+    llm.register_function("shutdown_system", shutdown_system)
     messages = [
         {
             "role": "system",

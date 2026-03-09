@@ -1,4 +1,7 @@
 # batch_loop.py
+
+this is configured for MACOS
+
 this will be the primitive version of the conversational AI. It will be much
 slower because we will have to wait for user to finisih speaking, and then
 process the audio, then send it baack to user in one batch_loop
