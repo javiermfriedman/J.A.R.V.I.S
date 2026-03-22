@@ -11,3 +11,10 @@ pipecat-ai-cli
 pipecat-ai[cartesia,daily,deepgram,elevenlabs,openai,runner,silero,webrtc]
 torch
 uvicorn
+twilio
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+pytest
+pytest-asyncio

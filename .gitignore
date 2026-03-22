@@ -4,3 +4,5 @@ backend/venv/
 *.pyc
 *.mp3
 package-lock.json
+backend/config/credentials.json
+backend/config/token.json

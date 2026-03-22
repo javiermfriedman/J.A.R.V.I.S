@@ -105,8 +105,11 @@ export default function useWebRTC() {
   }, [disconnect]);
 
   /* ── Auto-connect on mount ────────────────────────────────────── */
+  /* Defer to next tick so React StrictMode's unmount→remount cycle cancels
+     the first connect (avoids duplicate POST /api/offer and duplicate bots). */
   useEffect(() => {
-    connect();
+    const id = setTimeout(() => connect(), 0);
+    return () => clearTimeout(id);
   }, [connect]);
 
   /* ── Single tap toggles connection ─────────────────────────────── */
