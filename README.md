@@ -10,7 +10,7 @@
 
 ## 👇 Watch This First
 
-[![Watch the tutorial](https://img.youtube.com/vi/Qav7NJIsKL4/maxresdefault.jpg)](https://www.youtube.com/watch?v=Qav7NJIsKL4&t=30s)
+[![Watch the tutorial](https://img.youtube.com/vi/Qav7NJIsKL4/maxresdefault.jpg)](https://www.youtube.com/watch?v=Qav7NJIsKL4)
 
 > ⚠️ **Please watch the video above before continuing.**
 
