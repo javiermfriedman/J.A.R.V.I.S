@@ -11,7 +11,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
     SmallWebRTCRequest, SmallWebRTCPatchRequest, SmallWebRTCRequestHandler
 )
 from pipecat.runner.types import SmallWebRTCRunnerArguments
-import pipeline  # J.A.R.V.I.S. pipeline
+from app.orchestrator import bot
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -22,7 +22,7 @@ handler = SmallWebRTCRequestHandler()
 async def offer(request: SmallWebRTCRequest, background_tasks: BackgroundTasks):
     async def on_connection(connection: SmallWebRTCConnection):
         runner_args = SmallWebRTCRunnerArguments(webrtc_connection=connection)
-        background_tasks.add_task(pipeline.bot, runner_args)
+        background_tasks.add_task(bot, runner_args)
     return await handler.handle_web_request(request, on_connection)
 
 @app.patch("/api/offer")
@@ -31,4 +31,4 @@ async def ice(request: SmallWebRTCPatchRequest):
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000)  # your port here
+    uvicorn.run(app, host="localhost", port=8000)

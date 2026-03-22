@@ -4,17 +4,17 @@ Run from the backend directory:
     python -m tests.test_schedule_event
 """
 
-import sys
-import os
 import json
-from datetime import datetime, timedelta, timezone
+import os
+import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from services.google.auth import get_google_credentials
+from app.integrations.google.auth import get_google_credentials
 from googleapiclient.discovery import build
 
 
@@ -24,7 +24,6 @@ def test_schedule_event():
     print("📅 TEST: scheduleEvent")
     print("=" * 60)
 
-    # 1. Authenticate
     try:
         creds = get_google_credentials()
         print(f"  ✅ Authenticated")
@@ -32,7 +31,6 @@ def test_schedule_event():
         print(f"  ❌ Auth failed: {e}")
         return
 
-    # 2. Collect event details
     print()
     summary = input("  Event title: ").strip()
     if not summary:
@@ -62,7 +60,6 @@ def test_schedule_event():
 
     tz = "America/New_York"
 
-    # 3. Show summary and confirm
     print()
     print("  " + "-" * 40)
     print(f"  Title:       {summary}")
@@ -80,7 +77,6 @@ def test_schedule_event():
         print("  Cancelled.")
         return
 
-    # 4. Create event via API
     try:
         service = build('calendar', 'v3', credentials=creds)
 

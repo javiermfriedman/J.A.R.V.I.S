@@ -1,25 +1,23 @@
-from pipecat.frames.frames import TTSSpeakFrame
-from pipecat.services.llm_service import FunctionCallParams
-from googleapiclient.discovery import build
+"""
+This file is used to get the calendar events for the system.
+"""
+
+import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-import json
+
+from googleapiclient.discovery import build
 from loguru import logger
+from pipecat.frames.frames import TTSSpeakFrame
+from pipecat.services.llm_service import FunctionCallParams
+
 from .auth import get_google_credentials
 
 async def get_calender_events(params: FunctionCallParams):
-    """get an array of calendar events for a given time range
-    
-    Args:
-        params: start_date: The start date and time of the event (datetime object).
-        end_date: The end date and time of the event (datetime object).
-        Returns:
-        str: JSON string of events for the given time range
-    """
+    """Return calendar events for the requested time range as JSON."""
     try:
         logger.info("🛠 TOOL CALL: get_calender_events() invoked")
 
-        # Bot speaks immediately before checking schedule
         await params.llm.push_frame(TTSSpeakFrame("Let me check your schedule diddy"))
         
         tz = ZoneInfo("America/New_York")
@@ -34,12 +32,10 @@ async def get_calender_events(params: FunctionCallParams):
         time_max = end_date.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
         
         logger.info(f"📅 Fetching calendar events for ({start_date.strftime('%Y-%m-%d-T%H:%M:%S')} to {end_date.strftime('%Y-%m-%d-T%H:%M:%S')})")
-        
-        # Get authenticated calendar service
+
         creds = get_google_credentials()
         service = build('calendar', 'v3', credentials=creds)
-        
-        # Fetch events from primary calendar
+
         events_result = service.events().list(
             calendarId='primary',
             timeMin=time_min,
@@ -50,21 +46,16 @@ async def get_calender_events(params: FunctionCallParams):
         ).execute()
         
         events = events_result.get('items', [])
-        
-        # Filter events to include only summary and simplified times (focusing on timed events)
+
         filtered_events = []
         for event in events:
-            # We skip events without a 'dateTime' as they are typically all-day events that don't fit the '12:00 PM meeting' structure of the demo.
             start_time_str = event.get('start', {}).get('dateTime')
             end_time_str = event.get('end', {}).get('dateTime')
             summary = event.get('summary', 'Untitled Event')
 
             if start_time_str and end_time_str:
-                # 1. Parse API string (removes 'Z' and converts to Python object)
                 start_dt = datetime.fromisoformat(start_time_str.replace('Z', '+00:00')).astimezone()
                 end_dt = datetime.fromisoformat(end_time_str.replace('Z', '+00:00')).astimezone()
-                
-                # 2. Format for LLM readability
                 start_time = start_dt.strftime("%I:%M %p")
                 end_time = end_dt.strftime("%I:%M %p")
 
@@ -75,8 +66,7 @@ async def get_calender_events(params: FunctionCallParams):
                 })
         
         result = json.dumps(filtered_events, indent=2)
-        
-        # NOTE: events variable in logger will still show max 50 events, but filtered_events is the concise list.
+
         logger.info(f"✅ Calendar events retrieved: {result}")
         await params.result_callback(result)
         return result
@@ -89,28 +79,10 @@ async def get_calender_events(params: FunctionCallParams):
 
 
 async def schedule_event(params: FunctionCallParams):
-    """
-    Book a Google Calendar event on the specified calendar.
-
-    Args:
-        service: An authenticated Google Calendar API service object.
-        summary: The title of the event.
-        start_date: The start date and time of the event (datetime object).
-        end_date: The end date and time of the event (datetime object).
-        description: A detailed description of the event (optional).
-        timezone: The timezone for the event (ZoneInfo object).
-                  This should match the timezone of your start_date/end_date if they are naive.
-        calendar_id: The ID of the calendar to book the event on (defaults to 'primary').
-
-    Returns:
-        A dictionary containing information about the created event, or None if an error occurred.
-    """
-
+    """Create a Google Calendar event from the LLM-provided arguments."""
     try:
-
         logger.info("🛠 TOOL CALL: schedule_event() invoked")
 
-        # Bot speaks immediately before checking schedule
         await params.llm.push_frame(TTSSpeakFrame("Let me book the event diddy"))
         
         summary = params.arguments.get("summary", "")
@@ -126,7 +98,6 @@ async def schedule_event(params: FunctionCallParams):
         creds = get_google_credentials()
         service = build('calendar', 'v3', credentials=creds)
 
-        
         event = {
             'summary': summary,
             'description': description,
@@ -155,7 +126,7 @@ async def schedule_event(params: FunctionCallParams):
         return result
 
     except Exception as e:
-        logger.error(f"❌ Failed to get calendar events: {e}")
-        error_result = f"Error retrieving calendar events: {str(e)}"
+        logger.error(f"❌ Failed to schedule calendar event: {e}")
+        error_result = f"Error scheduling calendar event: {str(e)}"
         await params.result_callback(error_result)
         return error_result

@@ -4,18 +4,16 @@ Run from the backend directory:
     python -m tests.test_google
 """
 
-import json
-import sys
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 
-# Ensure backend/ is on the path so imports work
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from services.google.auth import get_google_credentials, SCOPES
+from app.integrations.google.auth import get_google_credentials
 from googleapiclient.discovery import build
 
 

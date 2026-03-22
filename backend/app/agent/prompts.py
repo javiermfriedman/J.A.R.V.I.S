@@ -22,5 +22,5 @@ When speaking times aloud, convert to natural speech: "09:30 AM" → "nine thirt
 """
 
 JARVIS_SYSTEM_PROMPT = JARVIS_SYSTEM_PROMPT.format(
-    current_date=datetime.now().strftime("%I:%M %p, %A %B %d, %Y")  # e.g. "09:30 AM, Sunday March 08 2026"
+    current_date=datetime.now().strftime("%I:%M %p, %A %B %d, %Y")
 )

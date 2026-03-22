@@ -4,29 +4,12 @@ The core logic to run the JARVIS AI bot, using the Pipecat framework.
 """
 
 import os
+import sys
 
 from dotenv import load_dotenv
-import sys
 from loguru import logger
-
-# THIS removes pipecat logging from terminal
-# logger.remove()  
-# logger.add(
-#     sys.stderr,
-#     level="DEBUG",
-#     filter=lambda record: not record["name"].startswith("pipecat")
-# )
-
-# Your own logging
-my_logger = logger.bind(name="jarvis")
-
-my_logger.info("Starting up Jarvis AI...")
-my_logger.info("Loading Silero VAD model...")
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-my_logger.info("Silero VAD model loaded")
 from pipecat.frames.frames import TTSSpeakFrame
-
-my_logger.info("Loading pipeline components...")
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -39,32 +22,40 @@ from pipecat.turns.user_mute import FunctionCallUserMuteStrategy
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIObserver, RTVIProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
-
-
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
-my_logger.info("Loading tools...")
-
-from services import (
-    get_gmail_emails, 
-    send_gmail_email, 
+from app.integrations import (
+    get_gmail_emails,
+    send_gmail_email,
     get_calender_events,
-    schedule_event, 
+    schedule_event,
     fetch_all_known_contacts,
     get_contact_information,
     shutdown_system,
 )
-from core import JARVIS_SYSTEM_PROMPT, tools
-my_logger.info("All components loaded successfully!")
+from app.agent import JARVIS_SYSTEM_PROMPT, tools
+
+
+# Suppress pipecat log noise on stderr; jarvis logs still use my_logger below.
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="DEBUG",
+    filter=lambda record: not record["name"].startswith("pipecat")
+)
+
 
 load_dotenv(override=True)
 
+my_logger = logger.bind(name="jarvis")
+my_logger.info("J.A.R.V.I.S. pipeline module loaded")
+
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
-    my_logger.info(f"Starting bot")
+    my_logger.info("Starting bot")
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
@@ -73,12 +64,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         voice_id="JBFqnCBsd6RMkjVDRZzb"
     )
 
-    # run_in_parallel=False avoids race conditions and duplicate tool execution
-    # (see Pipecat issue #3273 and similar)
-    llm = OpenAILLMService(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        run_in_parallel=False,
-    )
+    llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"))
 
     llm.register_function("get_calender_events", get_calender_events)
     llm.register_function("schedule_event", schedule_event)
@@ -92,10 +78,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "role": "system",
             "content": JARVIS_SYSTEM_PROMPT,
         },
-    ]   
+    ]
 
     context = LLMContext(messages=messages, tools=tools, tool_choice="auto")
-    
+
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
@@ -108,14 +94,14 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     pipeline = Pipeline(
         [
-            transport.input(),  # Transport user input
+            transport.input(),
             rtvi,
             stt,
-            user_aggregator,  # User responses
-            llm,  # LLM
-            tts,  # TTS
-            transport.output(),  # Transport bot output
-            assistant_aggregator,  # Assistant spoken responses
+            user_aggregator,
+            llm,
+            tts,
+            transport.output(),
+            assistant_aggregator,
         ]
     )
 
@@ -130,13 +116,16 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
-        my_logger.info(f"Client connected")
-        # Speak the exact greeting — bypasses LLM, goes straight to TTS.
-        await task.queue_frames([user_aggregator.get_context_frame()])
+        my_logger.info("Client connected")
+        await task.queue_frames(
+            [
+                TTSSpeakFrame("All systems are online sir. How may I assist you?"),
+            ]
+        )
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
-        my_logger.info(f"Client disconnected")
+        my_logger.info("Client disconnected")
         await task.cancel()
 
     runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
@@ -145,7 +134,6 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         await runner.run(task)
     except Exception as e:
         my_logger.error(f"Pipeline error: {e}")
-        # Categorize the error
         error_str = str(e).lower()
         if "credit" in error_str or "quota" in error_str or "billing" in error_str:
             my_logger.error("💳 Out of credits on one of the API services")

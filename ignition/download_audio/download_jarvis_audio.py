@@ -1,4 +1,4 @@
-from eleven_client import generate_audio
+from download_audio.eleven_client import generate_audio
 import subprocess
 text_to_download = "Very Good Sir. Initiating dev server on port five-thousand seven-hundred forty-one"
 audio_file_name = "test_audio.mp3"

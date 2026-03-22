@@ -6,3 +6,5 @@ backend/venv/
 package-lock.json
 backend/config/credentials.json
 backend/config/token.json
+backend/app/integrations/google/config/credentials.json
+backend/app/integrations/google/config/token.json

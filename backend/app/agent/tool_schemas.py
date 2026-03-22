@@ -2,8 +2,6 @@ from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
 
-
-
 get_gmail_emails_tool = FunctionSchema(
     name="get_gmail_emails",
     description="Get the 2 most recent Gmail emails. Use this when the user asks about their emails, messages, or wants to check their inbox.",
@@ -113,6 +111,7 @@ tools = ToolsSchema(standard_tools=[
     schedule_event_tool,
     get_gmail_emails_tool,
     send_gmail_email_tool,
+    fetch_all_known_contacts_tool,
     get_contact_information_tool,
     shutdown_system_tool,
 ])

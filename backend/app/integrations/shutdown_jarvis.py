@@ -1,33 +1,31 @@
 import asyncio
-import subprocess
-import sys
-from time import sleep
-import tempfile
 import os
-
+import subprocess
+from pathlib import Path
+import sys
+import tempfile
+from time import sleep
 
 from loguru import logger
 from pipecat.frames.frames import TTSSpeakFrame
 from pipecat.services.llm_service import FunctionCallParams
 
+# Repo: ignition/jarvis_audio/ (sibling of backend/)
+_SHUTDOWN_MP3 = (
+    Path(__file__).resolve().parents[3] / "ignition" / "jarvis_audio" / "shutdown.mp3"
+)
+
 
 async def shutdown_system(params: FunctionCallParams):
     logger.info("Initiating shutdown sequence for J.A.R.V.I.S...")
 
-    # Voice confirmation to the user
     await params.llm.push_frame(TTSSpeakFrame("Powering down all systems, sir."))
 
-    # Give TTS a moment to play
     await asyncio.sleep(2)
 
     if sys.platform == "darwin":
         try:
-
-            # generate verbose terminal shutfown
-
-            # Play the shutdown sound   
-            subprocess.Popen(["afplay", "/Users/javierfriedman/Code/J.A.R.V.I.S/ignition/audio/shutdown.mp3"])
-            
+            subprocess.Popen(["afplay", str(_SHUTDOWN_MP3)])
 
             shutdown_terminal_sequence()
 
@@ -42,7 +40,7 @@ async def shutdown_system(params: FunctionCallParams):
             )
             logger.info("Arc closed.")
             sleep(1)
-            
+
             subprocess.run(["osascript", "-e", 'tell application "Spotify" to set sound volume to 0'], check=False)
             logger.info("Spotify volume set to 0.")
             subprocess.run(["osascript", "-e", 'tell application "Spotify" to pause'], check=False)
@@ -72,7 +70,7 @@ def shutdown_terminal_sequence():
         "[HW]      Detaching arc reactor control bus .................. OK",
         "[DIAG]    Final diagnostics ................................... CLEAN",
         "[SYS]     Powering down non-critical subsystems .............. OK",
-               "[SYS]     J.A.R.V.I.S core shutdown complete. Goodbye, sir.",
+        "[SYS]     J.A.R.V.I.S core shutdown complete. Goodbye, sir.",
     ]
     script = "#!/bin/bash\nclear\n"
     for line in lines:

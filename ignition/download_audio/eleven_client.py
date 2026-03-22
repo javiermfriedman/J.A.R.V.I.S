@@ -1,16 +1,14 @@
+"""
+This file is used to generate audio using the ElevenLabs API for starting up the system.
+"""
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 import os
 load_dotenv()
 
-
-
-
-
 elevenlabs = ElevenLabs(
   api_key=os.getenv("ELEVENLABS_API_KEY"),
 )
-
 def generate_audio(text, voice_id):
     audio = elevenlabs.text_to_speech.convert(
         text=text,

@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from services.google.auth import get_google_credentials
+from app.integrations.google.auth import get_google_credentials
 from googleapiclient.discovery import build
 
 
@@ -24,7 +24,6 @@ def test_busy_periods():
     print("📅 TEST: fetchBusyPeriods")
     print("=" * 60)
 
-    # 1. Authenticate
     try:
         creds = get_google_credentials()
         print(f"  ✅ Authenticated")
@@ -32,7 +31,6 @@ def test_busy_periods():
         print(f"  ❌ Auth failed: {e}")
         return
 
-    # 2. Prompt for date range (default: today → tomorrow)
     now = datetime.now()
     default_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     default_end = default_start + timedelta(days=1)
@@ -59,7 +57,6 @@ def test_busy_periods():
     print(f"  Querying: {start_date.isoformat()} → {end_date.isoformat()}")
     print()
 
-    # 3. Query freebusy API
     try:
         service = build('calendar', 'v3', credentials=creds)
 
