@@ -111,6 +111,7 @@ tools = ToolsSchema(standard_tools=[
     schedule_event_tool,
     get_gmail_emails_tool,
     send_gmail_email_tool,
+    fetch_all_known_contacts_tool,
     get_contact_information_tool,
     shutdown_system_tool,
 ])
