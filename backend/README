@@ -2,6 +2,15 @@
 
 this is configured for MACOS
 
+see if its possible to have a phonenumber through jarvis. THey dial and 
+
+# tools
+- email/send email
+- twilio will start a phone call 
+
+
+
+
 this will be the primitive version of the conversational AI. It will be much
 slower because we will have to wait for user to finisih speaking, and then
 process the audio, then send it baack to user in one batch_loop

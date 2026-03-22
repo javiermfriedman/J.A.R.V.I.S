@@ -14,6 +14,9 @@ known_names = {
     "Sam": "a2",
     "tony stark": "a3",
     "Tony": "a3",
+    "Dad": "a4",
+    "Benjamin Friedman": "a4",
+    "Ben": "a4",
 }   
 
 contact_book = {
@@ -31,8 +34,13 @@ contact_book = {
         "email": "tony.stark@example.com",
         "phone": "789-012-3456",
         "address": "789 Main St, Anytown, USA"
+    },
+    "a4": {
+        "email": "benfriedmansemail@gmail.com",
+        "phone": "+16462656415",
+        "relationship": "father",
+        "birthday": "1970-05-30",
     }
-
 }
 
 async def fetch_all_known_contacts(params: FunctionCallParams):

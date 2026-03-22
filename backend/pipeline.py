@@ -132,7 +132,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async def on_client_connected(transport, client):
         my_logger.info(f"Client connected")
         # Speak the exact greeting — bypasses LLM, goes straight to TTS.
-        await task.queue_frames([TTSSpeakFrame(text="Hello Sir. All systems are online and await your command.")])
+        await task.queue_frames([user_aggregator.get_context_frame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
