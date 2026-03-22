@@ -1,16 +1,28 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 load_dotenv(override=True)
-# Google API scopes
+
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
 ]
+
+
+def _config_dir() -> Path:
+    """Directory containing credentials.json and token.json (Google OAuth)."""
+    env = os.getenv("CONFIG_PATH")
+    if env:
+        return Path(env).expanduser().resolve()
+    # Default: this package's config/ (next to auth.py)
+    # Default: this package's config/ (next to auth.py)
+    return Path(__file__).resolve().parent / "config"
+
 
 def get_google_credentials():
     """Get authenticated Google credentials for Calendar and Gmail APIs.
@@ -19,28 +31,26 @@ def get_google_credentials():
         Credentials: Authenticated Google OAuth2 credentials
     """
     creds = None
-    CONFIG_PATH = os.getenv("CONFIG_PATH")
-    credentials_path = CONFIG_PATH + "/credentials.json"
-    token_path = CONFIG_PATH + "/token.json"
+    config_dir = _config_dir()
+    credentials_path = config_dir / "credentials.json"
+    token_path = config_dir / "token.json"
 
-    # Load existing token if available
-    if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-    
-    # If no valid credentials, request authorization
+    if token_path.exists():
+        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists(credentials_path):
+            if not credentials_path.exists():
                 raise FileNotFoundError(
                     f"Google credentials file not found at {credentials_path}. "
-                    "Please set GOOGLE_CREDENTIALS_PATH in your .env file or place credentials.json in the project root."
+                    "Set CONFIG_PATH to the directory containing credentials.json, "
+                    "or place credentials.json in app/integrations/google/config/."
                 )
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), SCOPES)
             creds = flow.run_local_server(port=0)
-        
-        # Save credentials for next run
+
         with open(token_path, 'w') as token:
             token.write(creds.to_json())
     

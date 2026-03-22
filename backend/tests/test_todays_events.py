@@ -1,12 +1,9 @@
 import json
+from datetime import datetime
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta, timezone
 
-
-# ---------------------------------------------------------------------------
-# Helpers / Fixtures
-# ---------------------------------------------------------------------------
 
 def make_params(result_callback=None):
     """Build a minimal FunctionCallParams-like mock."""
@@ -34,10 +31,8 @@ def make_all_day_event(summary, date_str):
     }
 
 
-# A fixed "today" used across tests so results are deterministic.
 FAKE_NOW = datetime(2025, 6, 15, 9, 0, 0)
 
-# Two sample timed events that fall on FAKE_NOW's date.
 SAMPLE_EVENTS = [
     make_api_event(
         "Standup",
@@ -51,24 +46,14 @@ SAMPLE_EVENTS = [
     ),
 ]
 
+MODULE = "google_calender"
 
-# ---------------------------------------------------------------------------
-# Shared patch targets  (adjust the module path to match your project)
-# ---------------------------------------------------------------------------
-MODULE = "google_calender"   # ← change if your module is named differently
-
-PATCH_NOW   = f"{MODULE}.datetime"
+PATCH_NOW = f"{MODULE}.datetime"
 PATCH_CREDS = f"{MODULE}.get_google_credentials"
 PATCH_BUILD = f"{MODULE}.build"
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-
 class TestGetTodaysEvents:
-
-    # -- happy-path ----------------------------------------------------------
 
     @pytest.mark.asyncio
     async def test_returns_json_string(self):
@@ -223,8 +208,6 @@ class TestGetTodaysEvents:
         events = json.loads(result)
         assert events[0]["summary"] == "Untitled Event"
 
-    # -- side-effects --------------------------------------------------------
-
     @pytest.mark.asyncio
     async def test_result_callback_is_called_with_result(self):
         """result_callback must be awaited exactly once with the JSON string."""
@@ -263,8 +246,6 @@ class TestGetTodaysEvents:
 
         params.llm.push_frame.assert_awaited_once()
 
-    # -- time-window ---------------------------------------------------------
-
     @pytest.mark.asyncio
     async def test_api_called_with_todays_time_window(self):
         """The calendar API should be queried with midnight-to-midnight UTC range."""
@@ -288,8 +269,6 @@ class TestGetTodaysEvents:
         assert call_kwargs["timeMin"].endswith("Z")
         assert call_kwargs["timeMax"].endswith("Z")
 
-    # -- error handling ------------------------------------------------------
-
     @pytest.mark.asyncio
     async def test_google_api_error_is_handled(self):
         """A Google API exception should not propagate uncaught."""
@@ -302,21 +281,15 @@ class TestGetTodaysEvents:
             mock_dt.now.return_value = FAKE_NOW
             mock_dt.fromisoformat = datetime.fromisoformat
 
-            # Simulate the API throwing
             mock_build.return_value.events.return_value.list.return_value \
                 .execute.side_effect = Exception("API unavailable")
 
             from google_calender import getTodaysEvents
-            # Should not raise
             try:
                 await getTodaysEvents(params)
             except Exception as exc:
                 pytest.fail(f"getTodaysEvents raised unexpectedly: {exc}")
 
-
-# ---------------------------------------------------------------------------
-# Internal helper
-# ---------------------------------------------------------------------------
 
 def _setup_calendar_mock(mock_build, events):
     """Wire up mock_build so the calendar API returns `events`."""

@@ -1,6 +1,11 @@
+import os
 import subprocess
-import time
 import sys
+import time
+
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+_JARVIS_AUDIO = os.path.join(_REPO_ROOT, "jarvis_audio")
+
 TRACK_URI = "spotify:track:39shmbIHICJ2Wxnk1fPSdz"
 SPOTIFY_VOLUME = 40  # 0–100 — low enough so J.A.R.V.I.S. is heard over the music
 
@@ -40,7 +45,6 @@ def open_spotify():
 
 def play_saved_audio(filepath, background=False):
     """Play an MP3 file using macOS's built-in afplay command. Skips empty/missing files."""
-    import os
     if not os.path.isfile(filepath) or os.path.getsize(filepath) == 0:
         print(f"⚠️  Skipping {os.path.basename(filepath)} (missing or empty)")
         return
@@ -98,7 +102,7 @@ def start_dev_server():
         "osascript", "-e",
         '''tell app "Terminal"
             activate
-            do script "/Users/javierfriedman/Code/J.A.R.V.I.S/backend/venv/bin/python /Users/javierfriedman/Code/J.A.R.V.I.S/backend/main.py"
+            do script "cd /Users/javierfriedman/Code/J.A.R.V.I.S/backend && /Users/javierfriedman/Code/J.A.R.V.I.S/backend/venv/bin/python -m app.main"
         end tell'''
     ])
 
@@ -155,9 +159,9 @@ if __name__ == "__main__":
     open_spotify()
     time.sleep(4)
     fake_terminal_output()
-    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/ignition/audio/welcome_home.mp3")
+    play_saved_audio(os.path.join(_JARVIS_AUDIO, "welcome_home.mp3"))
     time.sleep(1)
-    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/ignition/audio/sfx_ai.mp3", background=True)
-    play_saved_audio("/Users/javierfriedman/Code/J.A.R.V.I.S/ignition/audio/open_dev.mp3", background=True)
+    play_saved_audio(os.path.join(_JARVIS_AUDIO, "sfx_ai.mp3"), background=True)
+    play_saved_audio(os.path.join(_JARVIS_AUDIO, "open_dev.mp3"), background=True)
     time.sleep(2)
     start_dev_server()  

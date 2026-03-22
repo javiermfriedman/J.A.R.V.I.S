@@ -1,40 +1,31 @@
-from pipecat.frames.frames import TTSSpeakFrame
-from pipecat.services.llm_service import FunctionCallParams
+import base64
+import json
+from email.message import EmailMessage
+
 from googleapiclient.discovery import build
 from loguru import logger
-import base64
-from email.message import EmailMessage
-import json
+from pipecat.frames.frames import TTSSpeakFrame
+from pipecat.services.llm_service import FunctionCallParams
+
 from .auth import get_google_credentials
 
 async def get_gmail_emails(params: FunctionCallParams):
-    """Get the 2 most recent Gmail emails.
-    
-    Args:
-        params: FunctionCallParams (no arguments needed)
-        
-    Returns:
-        str: JSON string of 2 most recent emails
-    """
+    """Return the 2 most recent Gmail messages as JSON."""
     try:
         logger.info("🛠 TOOL CALL: get_gmail_emails() invoked")
 
-        # Bot speaks immediately before checking inbox
         await params.llm.push_frame(TTSSpeakFrame("Let me check your inbox"))
-        
-        logger.info(f"📧 Fetching 2 most recent Gmail emails")
-        
-        # Get authenticated Gmail service
+
+        logger.info("📧 Fetching 2 most recent Gmail emails")
+
         creds = get_google_credentials()
         service = build('gmail', 'v1', credentials=creds)
-        
-        # Get message IDs (list() only returns IDs, not full emails)
+
         message_ids = service.users().messages().list(
             userId='me',
             maxResults=2
         ).execute().get('messages', [])
-        
-        # Extract snippet, subject, and from for each email
+
         emails_list = []
         for msg in message_ids:
             message = service.users().messages().get(
@@ -42,25 +33,24 @@ async def get_gmail_emails(params: FunctionCallParams):
                 id=msg['id'],
                 format='metadata'
             ).execute()
-            
-            # Extract snippet, subject, and from
+
             snippet = message['snippet']
             headers = message['payload']['headers']
             subject = next(h['value'] for h in headers if h['name'] == 'Subject')
             sender = next(h['value'] for h in headers if h['name'] == 'From')
-            
+
             emails_list.append({
                 'snippet': snippet,
                 'subject': subject,
                 'from': sender
             })
-        
+
         result = json.dumps(emails_list, indent=2)
-        
+
         logger.info(f"✅ Gmail emails retrieved: {len(emails_list)} emails")
         await params.result_callback(result)
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get Gmail emails: {e}")
         error_result = f"Error retrieving Gmail emails: {str(e)}"
@@ -68,16 +58,8 @@ async def get_gmail_emails(params: FunctionCallParams):
         return error_result
 
 
-
-
 async def send_gmail_email(params: FunctionCallParams):
-    """Send an email via Gmail.
-
-    Expected arguments from the LLM (passed via params.arguments):
-        to:      Recipient email address
-        subject: Email subject line
-        body:    Email body text
-    """
+    """Send an email via Gmail (to, subject, body from params.arguments)."""
     try:
         to = params.arguments.get("to", "")
         subject = params.arguments.get("subject", "")
@@ -85,7 +67,7 @@ async def send_gmail_email(params: FunctionCallParams):
 
         logger.info(f"🛠 TOOL CALL: send_gmail_email() invoked — to={to}, subject={subject}")
 
-        await params.llm.push_frame(TTSSpeakFrame(f"Sending that email now, sir."))
+        await params.llm.push_frame(TTSSpeakFrame("Sending that email now, sir."))
 
         creds = get_google_credentials()
         service = build("gmail", "v1", credentials=creds)
