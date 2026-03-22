@@ -150,7 +150,8 @@ def start_dev_server():
             print("🚀 Opening Arc...")
             fade_spotify_volume(30, duration=3.0)
             time.sleep(1.5)
-            subprocess.Popen(["open", "-a", "Arc", "http://127.0.0.1:5741"])
+            browser = "Arc"
+            subprocess.Popen(["open", "-a", browser, "http://127.0.0.1:5741"])
             break
     else:
         print("❌ Servers never became ready — check the Terminal windows for errors.")
